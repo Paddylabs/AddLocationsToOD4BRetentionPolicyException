@@ -60,9 +60,10 @@ $UPN = Read-Host -Prompt 'Enter your O365 Login'
 Import-Module ExchangeOnlineManagement
 Connect-IPPSSession -UserPrincipalName $UPN
 $ErrorLog = 'Errors.txt'
+$PolicyName = Read-Host -Prompt 'Enter the Retention Policy Name'
 
 try {
-    $OneDrivePolicy = Get-RetentionCompliancePolicy -Identity "Test Retention" -ErrorAction stop 
+    $OneDrivePolicy = Get-RetentionCompliancePolicy -Identity $PolicyName -ErrorAction stop 
 }
 catch {
     Write-Host "Retention Policy not found" -ForegroundColor Yellow
