@@ -78,7 +78,7 @@ function Import-ValidCSV {
 $csvPath = Get-OpenFileDialog
 
 # Import users from CSV and validate CSV Properties present
-$Users = Import-ValidCSV -inputFile $csvpath.FileName -requiredColumns OneDriveUrl,Test
+$Users = Import-ValidCSV -inputFile $csvpath.FileName -requiredColumns 'OneDriveUrl'
 
 Import-Module ExchangeOnlineManagement
 Connect-IPPSSession -UserPrincipalName $UPN
