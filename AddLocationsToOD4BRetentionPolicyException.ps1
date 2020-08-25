@@ -19,56 +19,79 @@
   Requires:      
   Change Log:
   V1.0:         Initial Development
+  V2.0:         Improved Functions from BrettMillerB
 #>
 
-# Add Type and Load the Systems Forms
-Add-Type -AssemblyName System.Windows.Forms
-$csvpath = New-Object System.Windows.Forms.OpenFileDialog -Property @{ 
-    InitialDirectory = [Environment]::GetFolderPath('Desktop')
-    Filter = 'CSV (*.csv)| *.csv' 
+#Requires -Module ExchangeOnlineManagement
+
+[CmdletBinding()]
+param (
+    [Parameter(Mandatory)]
+    [string]
+    $UPN,
+
+    [Parameter(Mandatory)]
+    $PolicyName
+)
+
+# Declare functions to use in the script
+function Get-OpenFileDialog {
+    [CmdletBinding()]
+    param (
+        [string]
+        $Directory = [Environment]::GetFolderPath('Desktop'),
+        
+        [string]
+        $Filter = 'CSV (*.csv)| *.csv'
+    )
+
+    Add-Type -AssemblyName System.Windows.Forms
+    $openFileDialog = [System.Windows.Forms.OpenFileDialog]::new()
+    $openFileDialog.InitialDirectory = $Directory
+    $openFileDialog.Filter = $Filter
+    $openFileDialog.ShowDialog()
+    $openFileDialog
 }
+function Import-ValidCSV {
+    param (
+        [parameter(Mandatory)]
+        [ValidateScript({Test-Path $_ -type leaf})]
+        [string]
+        $inputFile,
 
-# Show the Dialog
-$null = $csvpath.ShowDialog()
+        [string[]]
+        $requiredColumns
+    )
 
-function import-ValidCSV
-{
-        param
-        (
-                [parameter(Mandatory=$true)]
-                [ValidateScript({test-path $_ -type leaf})]
-                [string]$inputFile,
-                [string[]]$requiredColumns
-        )
-        $csvImport = import-csv -LiteralPath $inputFile
-        $inputTest = $csvImport | Get-Member
-        foreach ($requiredColumn in $requiredColumns)
-        {
-                if (!($inputTest | Where-Object {$_.name -eq $requiredColumn}))
-                {
-                        write-error "$inputFile is missing the $requiredColumn column"
-                        exit 10
-                }
+    $csvImport = Import-Csv -LiteralPath C:\temp\Users.csv # $inputFile
+    $requiredColumns | ForEach-Object {
+        if ($_ -notin $csvImport[0].psobject.properties.name) {
+            Write-Error "$inputFile is missing the $_ column"
+            exit 10
         }
+    }
 
-        $csvImport
+    $csvImport
 }
 
-$Users = import-ValidCSV -inputFile $csvpath.FileName -requiredColumns "OneDriveUrl"
+# Prompt File Dialog Picker filtered on CSV files
+$csvPath = Get-OpenFileDialog
 
-$UPN = Read-Host -Prompt 'Enter your O365 Login'
+# Import users from CSV and validate CSV Properties present
+$Users = Import-ValidCSV -inputFile $csvpath.FileName -requiredColumns OneDriveUrl,Test
+
 Import-Module ExchangeOnlineManagement
 Connect-IPPSSession -UserPrincipalName $UPN
-$ErrorLog = 'Errors.txt'
-$PolicyName = Read-Host -Prompt 'Enter the Retention Policy Name'
 
 try {
     $OneDrivePolicy = Get-RetentionCompliancePolicy -Identity $PolicyName -ErrorAction stop 
 }
 catch {
-    Write-Host "Retention Policy not found" -ForegroundColor Yellow
+    Write-Host "The specified Retention Policy was not found" -ForegroundColor Yellow
     exit 10
-} 
+}
+
+$ErrorLog = 'Errors.txt'
 
 foreach ($user in $users) {
 
