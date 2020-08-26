@@ -63,7 +63,7 @@ function Import-ValidCSV {
         $requiredColumns
     )
 
-    $csvImport = Import-Csv -LiteralPath C:\temp\Users.csv # $inputFile
+    $csvImport = Import-Csv -LiteralPath $inputFile
     $requiredColumns | ForEach-Object {
         if ($_ -notin $csvImport[0].psobject.properties.name) {
             Write-Error "$inputFile is missing the $_ column"
